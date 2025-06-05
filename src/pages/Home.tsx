@@ -1,8 +1,9 @@
-import React from 'react';
-import { Play, BookOpen, Trophy, Star, Zap, Headphones } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, BookOpen, Trophy, Star, Zap, Headphones, Search, X } from 'lucide-react';
 import LessonCard from '../components/LessonCard';
 import BlurFade from '../components/ui/blur-fade';
 import { ShimmerButton } from '../components/ui/shimmer-button';
+import { MagicCard } from '../components/ui/magic-card';
 
 // Mock de lição principal (foco em uma lição específica)
 const mainLesson = {
@@ -18,7 +19,181 @@ const mainLesson = {
   videoId: "SWBMp1kAScU" // ID do vídeo de Friends
 };
 
+// Mock de todas as lições disponíveis para pesquisa
+const allLessons = [
+  {
+    id: 1,
+    title: "Ross and His Dad Talk About Fatherhood | Friends",
+    description: "Aprenda inglês com diálogos autênticos da série Friends",
+    duration: "15 min",
+    difficulty: "Intermediário",
+    completed: false,
+    progress: 0,
+    icon: <BookOpen className="w-6 h-6" />,
+    color: "from-blue-500 to-blue-600",
+    videoId: "SWBMp1kAScU"
+  },
+  {
+    id: 2,
+    title: "Pronúncia Clara",
+    description: "Melhore sua pronúncia com exercícios práticos",
+    duration: "20 min",
+    difficulty: "Intermediário",
+    completed: false,
+    progress: 60,
+    icon: <Headphones className="w-6 h-6" />,
+    color: "from-indigo-500 to-purple-600"
+  },
+  {
+    id: 3,
+    title: "Vocabulário de Negócios",
+    description: "Termos e expressões para o ambiente profissional",
+    duration: "25 min",
+    difficulty: "Avançado",
+    completed: true,
+    progress: 100,
+    icon: <Trophy className="w-6 h-6" />,
+    color: "from-green-500 to-emerald-600"
+  },
+  {
+    id: 4,
+    title: "Compreensão Auditiva",
+    description: "Pratique a escuta com áudios nativos",
+    duration: "18 min",
+    difficulty: "Intermediário",
+    completed: false,
+    progress: 30,
+    icon: <Play className="w-6 h-6" />,
+    color: "from-orange-500 to-red-500"
+  },
+  {
+    id: 5,
+    title: "Gramática Essencial",
+    description: "Fundamentos da gramática inglesa",
+    duration: "30 min",
+    difficulty: "Iniciante",
+    completed: false,
+    progress: 45,
+    icon: <BookOpen className="w-6 h-6" />,
+    color: "from-cyan-500 to-blue-600"
+  },
+  {
+    id: 6,
+    title: "Expressões Idiomáticas",
+    description: "Aprenda phrasal verbs e expressões comuns",
+    duration: "22 min",
+    difficulty: "Avançado",
+    completed: false,
+    progress: 80,
+    icon: <Star className="w-6 h-6" />,
+    color: "from-purple-500 to-pink-600"
+  }
+];
+
 const Home: React.FC = () => {
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filtrar lições baseado na pesquisa
+  const filteredLessons = allLessons.filter(lesson =>
+    lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    lesson.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    lesson.difficulty.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSearchToggle = () => {
+    setIsSearchActive(!isSearchActive);
+    if (!isSearchActive) {
+      setSearchQuery('');
+    }
+  };
+
+  const handleSearchClose = () => {
+    setIsSearchActive(false);
+    setSearchQuery('');
+  };
+
+  if (isSearchActive) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900">
+        {/* Search Header */}
+        <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Pesquisar lições..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                autoFocus
+              />
+            </div>
+            <button
+              onClick={handleSearchClose}
+              className="p-3 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Search Results */}
+        <div className="px-6 py-6">
+          {searchQuery.length === 0 ? (
+            <BlurFade delay={0.1}>
+              <MagicCard className="p-8 text-center">
+                <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Pesquisar Lições
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300">
+                  Digite o nome da lição, descrição ou nível de dificuldade para encontrar o que você procura
+                </p>
+              </MagicCard>
+            </BlurFade>
+          ) : filteredLessons.length > 0 ? (
+            <>
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {filteredLessons.length} resultado{filteredLessons.length !== 1 ? 's' : ''} encontrado{filteredLessons.length !== 1 ? 's' : ''}
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  para "{searchQuery}"
+                </p>
+              </div>
+              <div className="space-y-4">
+                {filteredLessons.map((lesson, index) => (
+                  <BlurFade key={lesson.id} delay={index * 0.1}>
+                    <LessonCard lesson={lesson} />
+                  </BlurFade>
+                ))}
+              </div>
+            </>
+          ) : (
+            <BlurFade delay={0.1}>
+              <MagicCard className="p-8 text-center">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Nenhum resultado encontrado
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-4">
+                  Não encontramos lições que correspondam a "{searchQuery}"
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Tente pesquisar por palavras-chave diferentes ou verifique a ortografia
+                </p>
+              </MagicCard>
+            </BlurFade>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
       {/* Hero Section */}
@@ -26,14 +201,24 @@ const Home: React.FC = () => {
         <div className="relative overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-12 text-white">
           <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-white/20 rounded-ios-lg backdrop-blur-md">
-                <Zap className="w-8 h-8 text-white" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-white/20 rounded-ios-lg backdrop-blur-md">
+                  <Zap className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold">ListenUp!</h1>
+                  <p className="text-blue-100">Domine o inglês com IA</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold">ListenUp!</h1>
-                <p className="text-blue-100">Domine o inglês com IA</p>
-              </div>
+              
+              {/* Search Icon */}
+              <button
+                onClick={handleSearchToggle}
+                className="p-3 bg-white/20 rounded-full backdrop-blur-md border border-white/30 hover:bg-white/30 transition-all duration-200 transform hover:scale-105"
+              >
+                <Search className="w-6 h-6 text-white" />
+              </button>
             </div>
             
             <div className="mt-8 p-6 bg-white/10 backdrop-blur-md rounded-ios-xl border border-white/20">
