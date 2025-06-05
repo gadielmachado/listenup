@@ -47,6 +47,12 @@ const Lesson: React.FC = () => {
   const [isBuffering, setIsBuffering] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
   const [pauseTimeoutId, setPauseTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  
+  // NOVO: Ref para armazenar os dados do segmento atual em reprodução
+  const currentPlayingSegmentRef = useRef<typeof lessonData.tracks[0] | null>(null);
+  
+  // NOVO: Estado para controlar se há um segmento sendo reproduzido
+  const [isPlayingSegment, setIsPlayingSegment] = useState(false);
 
   // Mock lesson data com segmentos de vídeo
   const lessonData = {
@@ -57,16 +63,16 @@ const Lesson: React.FC = () => {
     tracks: [
       {
         id: 1,
-        startTime: 2,
-        endTime: 5,
+        startTime: 1,
+        endTime: 6,
         correctText: "I'll tell you one thing. I wouldn't mind having a piece of this sun-dried tomato business.",
         translation: "Vou te dizer uma coisa. Eu não me importaria de ter uma parte desse negócio de tomate seco ao sol.",
         difficulty: "medium"
       },
       {
         id: 2,
-        startTime: 6,
-        endTime: 13,
+        startTime: 5,
+        endTime: 14,
         correctText: "Five years ago, if somebody had said to me, \"Here's a tomato that looks like a prune,\" I'd have said, \"Get out of my office.\"",
         translation: "Cinco anos atrás, se alguém tivesse me dito: \"Aqui está um tomate que parece uma ameixa seca\", eu teria dito: \"Saia do meu escritório.\"",
         difficulty: "hard"
@@ -167,20 +173,21 @@ const Lesson: React.FC = () => {
     if (event.data === window.YT.PlayerState.PLAYING) {
       setIsPlaying(true);
       setIsBuffering(false);
-      // NÃO iniciar intervalo/timeout aqui, ele é iniciado após playVideoSegment confirmar
       
     } else if (event.data === window.YT.PlayerState.PAUSED ||
                event.data === window.YT.PlayerState.ENDED ||
                event.data === window.YT.PlayerState.CUED) {
       setIsPlaying(false);
       setIsBuffering(false);
+      setIsPlayingSegment(false);
+      currentPlayingSegmentRef.current = null;
       clearCurrentInterval(); // Limpa se ainda usar interval para algo
       clearCurrentTimeout(); // Limpa o timeout de pausa
       
     } else if (event.data === window.YT.PlayerState.BUFFERING) {
       setIsBuffering(true);
-      // Pode ser útil pausar timeouts aqui também se o buffering interromper a lógica
-      // clearCurrentTimeout();
+      // Pausa temporariamente os timeouts durante buffering para evitar timing incorreto
+      clearCurrentTimeout();
     }
   };
 
@@ -191,28 +198,41 @@ const Lesson: React.FC = () => {
     setIsSeeking(true); // Bloqueia novas chamadas
     clearCurrentInterval(); // Limpa intervalo anterior
     clearCurrentTimeout(); // Limpa timeout anterior
+    
+    // Define o segmento atual antes de qualquer operação
+    const segmentToPlay = currentTrackData;
+    currentPlayingSegmentRef.current = segmentToPlay;
+    setIsPlayingSegment(true);
 
     try {
       playerRef.current.pauseVideo(); // Garante que está pausado antes de buscar
       // Um pequeno delay pode ajudar antes do seekTo
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      console.log(`Seeking to: ${currentTrackData.startTime}s`);
-      playerRef.current.seekTo(currentTrackData.startTime, true);
+      console.log(`Playing segment ${segmentToPlay.id}: ${segmentToPlay.startTime}s - ${segmentToPlay.endTime}s`);
+      playerRef.current.seekTo(segmentToPlay.startTime, true);
 
       // Aguarda a confirmação do seek
-      await waitForSeek(currentTrackData.startTime);
+      await waitForSeek(segmentToPlay.startTime);
 
       // Só reproduz APÓS confirmar o seek
       console.log("Seek confirmed, playing video...");
       playerRef.current.playVideo();
       
-      // Inicia o timeout para pausar no endTime
-      startPauseTimeout(currentTrackData);
+      // Aguarda um pouco antes de iniciar o timeout para pausar no endTime
+      // Usa os dados do segmento definido no início da função
+      setTimeout(() => {
+        if (currentPlayingSegmentRef.current?.id === segmentToPlay.id) {
+          startPauseTimeout(segmentToPlay);
+        } else {
+          console.log("Segment changed during setup, skipping timeout setup");
+        }
+      }, 400); // Aumentei para 400ms para maior estabilidade
 
     } catch (error) {
       console.error("Error playing video segment:", error);
-      // Tratar erro, talvez tentar novamente ou notificar usuário
+      setIsPlayingSegment(false);
+      currentPlayingSegmentRef.current = null;
     } finally {
       setIsSeeking(false); // Libera o bloqueio
     }
@@ -226,22 +246,35 @@ const Lesson: React.FC = () => {
     clearCurrentInterval();
     clearCurrentTimeout();
     
+    // Define o segmento atual antes de qualquer operação
+    const segmentToPlay = currentTrackData;
+    currentPlayingSegmentRef.current = segmentToPlay;
+    setIsPlayingSegment(true);
+    
     try {
       playerRef.current.pauseVideo();
       await new Promise(resolve => setTimeout(resolve, 150));
       
-      console.log(`Replaying: Seeking to: ${currentTrackData.startTime}s`);
-      playerRef.current.seekTo(currentTrackData.startTime, true);
-      await waitForSeek(currentTrackData.startTime);
+      console.log(`Replaying segment ${segmentToPlay.id}: ${segmentToPlay.startTime}s - ${segmentToPlay.endTime}s`);
+      playerRef.current.seekTo(segmentToPlay.startTime, true);
+      await waitForSeek(segmentToPlay.startTime);
       
       console.log("Seek confirmed, playing video...");
       playerRef.current.playVideo();
       
-      // Inicia o timeout para pausar no endTime
-      startPauseTimeout(currentTrackData);
+      // Aguarda um pouco antes de iniciar o timeout para pausar no endTime
+      setTimeout(() => {
+        if (currentPlayingSegmentRef.current?.id === segmentToPlay.id) {
+          startPauseTimeout(segmentToPlay);
+        } else {
+          console.log("Segment changed during replay setup, skipping timeout setup");
+        }
+      }, 400); // Aumentei para 400ms para maior estabilidade
       
     } catch (error) {
       console.error("Error replaying segment:", error);
+      setIsPlayingSegment(false);
+      currentPlayingSegmentRef.current = null;
     } finally {
       setIsSeeking(false);
     }
@@ -290,22 +323,35 @@ const Lesson: React.FC = () => {
       // Inicia próximo segmento
       if (playerRef.current && isVideoReady && !isSeeking) {
         setIsSeeking(true);
+        
+        // Define o segmento que será reproduzido
+        currentPlayingSegmentRef.current = nextTrackData;
+        setIsPlayingSegment(true);
+        
         try {
           playerRef.current.pauseVideo();
           await new Promise(resolve => setTimeout(resolve, 150));
 
-          console.log(`Next track: Seeking to: ${nextTrackData.startTime}s`);
+          console.log(`Next track - Playing segment ${nextTrackData.id}: ${nextTrackData.startTime}s - ${nextTrackData.endTime}s`);
           playerRef.current.seekTo(nextTrackData.startTime, true);
           await waitForSeek(nextTrackData.startTime);
 
           console.log("Next track seek confirmed, playing video...");
           playerRef.current.playVideo();
 
-          // Inicia o timeout para pausar passando os dados do NOVO segmento
-          startPauseTimeout(nextTrackData); // MUDANÇA PRINCIPAL AQUI
+          // Aguarda um pouco antes de iniciar o timeout para pausar no endTime
+          setTimeout(() => {
+            if (currentPlayingSegmentRef.current?.id === nextTrackData.id) {
+              startPauseTimeout(nextTrackData);
+            } else {
+              console.log("Segment changed during next track setup, skipping timeout setup");
+            }
+          }, 400); // 400ms de delay para estabilizar
 
         } catch (error) {
           console.error('Erro ao iniciar próximo segmento:', error);
+          setIsPlayingSegment(false);
+          currentPlayingSegmentRef.current = null;
         } finally {
           setIsSeeking(false);
         }
@@ -389,30 +435,79 @@ const Lesson: React.FC = () => {
     if (!playerRef.current || !trackData) return; // Verifica se trackData foi passado
 
     try {
-      const currentTime = playerRef.current.getCurrentTime();
-      // Calcula a duração restante usando o endTime do trackData passado
-      const remainingDuration = (trackData.endTime - currentTime) * 1000;
+      // Função auxiliar para verificar e configurar o timeout
+      const setupTimeout = (attempt = 1, maxAttempts = 5) => {
+        // Verifica se ainda é o segmento correto sendo reproduzido
+        if (currentPlayingSegmentRef.current?.id !== trackData.id) {
+          console.log(`Timeout canceled - segment changed (expected: ${trackData.id}, current: ${currentPlayingSegmentRef.current?.id})`);
+          return;
+        }
 
-      console.log(`Setting pause timeout for segment ${trackData.id} - duration: ${remainingDuration.toFixed(0)}ms (endTime: ${trackData.endTime}s)`);
+        const currentTime = playerRef.current.getCurrentTime();
+        
+        // Verifica se o currentTime está dentro do range esperado do segmento
+        const timeFromStart = currentTime - trackData.startTime;
+        const segmentDuration = trackData.endTime - trackData.startTime;
+        
+        // Se o tempo atual não está no range esperado e ainda há tentativas
+        if ((timeFromStart < -0.5 || timeFromStart > segmentDuration + 0.5) && attempt < maxAttempts) {
+          console.log(`Current time ${currentTime.toFixed(1)}s not in expected range for segment ${trackData.id} (${trackData.startTime}s-${trackData.endTime}s), retrying... (attempt ${attempt})`);
+          setTimeout(() => setupTimeout(attempt + 1, maxAttempts), 150);
+          return;
+        }
 
-      if (remainingDuration > 50) { // Só agenda se a duração for significativa
-        const timeoutId = setTimeout(() => {
-          if (playerRef.current && playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
-            console.log(`Pausing video at endTime: ${trackData.endTime}s for segment ${trackData.id}`);
+        // Calcula a duração restante usando o endTime do trackData passado
+        const remainingDuration = (trackData.endTime - currentTime) * 1000;
+
+        console.log(`Setting pause timeout for segment ${trackData.id} - currentTime: ${currentTime.toFixed(1)}s, endTime: ${trackData.endTime}s, duration: ${remainingDuration.toFixed(0)}ms`);
+
+        if (remainingDuration > 200) { // Aumentei de 100 para 200ms
+          const timeoutId = setTimeout(() => {
+            // Verifica novamente se ainda é o segmento correto
+            if (currentPlayingSegmentRef.current?.id === trackData.id && 
+                playerRef.current && 
+                playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
+              console.log(`Pausing video at endTime: ${trackData.endTime}s for segment ${trackData.id}`);
+              playerRef.current.pauseVideo();
+              setIsPlaying(false);
+              setIsPlayingSegment(false);
+              currentPlayingSegmentRef.current = null;
+            } else {
+              console.log(`Timeout executed but segment changed or not playing (segment: ${trackData.id})`);
+            }
+            setPauseTimeoutId(null); // Limpa o ID após execução
+          }, remainingDuration - 150); // Buffer de 150ms para compensar latência
+
+          setPauseTimeoutId(timeoutId);
+        } else if (remainingDuration > 0) {
+          console.log(`Segment ${trackData.id} duration very short (${remainingDuration.toFixed(0)}ms), scheduling immediate pause.`);
+          const timeoutId = setTimeout(() => {
+            if (currentPlayingSegmentRef.current?.id === trackData.id && 
+                playerRef.current && 
+                playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
+              playerRef.current.pauseVideo();
+              setIsPlaying(false);
+              setIsPlayingSegment(false);
+              currentPlayingSegmentRef.current = null;
+            }
+            setPauseTimeoutId(null);
+          }, Math.max(remainingDuration - 50, 0));
+          setPauseTimeoutId(timeoutId);
+        } else {
+          console.warn(`Segment ${trackData.id} already ended (${remainingDuration.toFixed(0)}ms), pausing immediately.`);
+          if (currentPlayingSegmentRef.current?.id === trackData.id && 
+              playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
             playerRef.current.pauseVideo();
             setIsPlaying(false);
+            setIsPlayingSegment(false);
+            currentPlayingSegmentRef.current = null;
           }
-          setPauseTimeoutId(null); // Limpa o ID após execução
-        }, remainingDuration - 50); // Pequeno buffer
-
-        setPauseTimeoutId(timeoutId);
-      } else {
-        console.warn(`Segment ${trackData.id} duration too short (${remainingDuration.toFixed(0)}ms) to schedule pause.`);
-        if (playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
-          playerRef.current.pauseVideo();
-          setIsPlaying(false);
         }
-      }
+      };
+
+      // Inicia a configuração do timeout
+      setupTimeout();
+
     } catch (error) {
       console.error("Error setting pause timeout:", error);
     }
@@ -423,6 +518,8 @@ const Lesson: React.FC = () => {
     return () => {
       clearCurrentInterval();
       clearCurrentTimeout();
+      setIsPlayingSegment(false);
+      currentPlayingSegmentRef.current = null;
     };
   }, []);
 
@@ -430,60 +527,27 @@ const Lesson: React.FC = () => {
   useEffect(() => {
     clearCurrentInterval();
     clearCurrentTimeout();
+    // NÃO limpa isPlayingSegment aqui pois nextTrack já gerencia isso
   }, [currentTrack]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
       
-      {/* Header */}
+      {/* Header Simples - Apenas botão voltar */}
       <BlurFade delay={0.1}>
-        <div className="relative overflow-hidden bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-8 text-white">
-          <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
-          <div className="relative z-10">
-            <button
-              onClick={() => navigate(-1)}
-              className="inline-flex items-center gap-2 text-blue-100 hover:text-white transition-colors mb-4"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-            
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-white/20 rounded-ios-lg backdrop-blur-md">
-                <Video className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">{lessonData.title}</h1>
-                <p className="text-blue-100">{lessonData.description}</p>
-              </div>
-            </div>
-
-            {/* Progress Section */}
-            <div className="mt-6 p-4 bg-white/10 backdrop-blur-md rounded-ios-xl border border-white/20">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-sm font-medium">
-                  Segmento {currentTrack + 1} de {lessonData.tracks.length}
-                </span>
-                <div className={`px-3 py-1 rounded-full text-xs font-medium text-white bg-gradient-to-r ${getDifficultyColor(currentTrackData.difficulty)}`}>
-                  {getDifficultyLabel(currentTrackData.difficulty)}
-                </div>
-              </div>
-              <div className="relative h-2 bg-white/20 rounded-full overflow-hidden">
-                <div 
-                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-yellow-300 to-orange-300 rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
-              <p className="text-sm text-blue-100 mt-2">
-                Tempo: {currentTrackData.startTime}s - {currentTrackData.endTime}s
-              </p>
-            </div>
-          </div>
+        <div className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-6 py-4 border-b border-gray-200/50 dark:border-gray-700/50">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm font-medium">Voltar</span>
+          </button>
         </div>
       </BlurFade>
 
-      <div className="px-6 py-6">
-        {/* Video Player */}
+      {/* Video Player - Movido para o topo */}
+      <div className="px-6 py-4">
         <BlurFade delay={0.2}>
           <MagicCard className="p-6 mb-6">
             <div className="mb-6">
@@ -528,25 +592,6 @@ const Lesson: React.FC = () => {
               >
                 <Play className="w-6 h-6 ml-1" />
               </button>
-            </div>
-
-            {/* Status do Segmento */}
-            <div className="mb-6 p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-center gap-2 text-gray-600 text-sm">
-                <span>Status:</span>
-                <span className={`font-medium ${
-                  !isVideoReady ? 'text-gray-600' : 
-                  isSeeking ? 'text-blue-600' :
-                  isBuffering ? 'text-yellow-600' :
-                  isPlaying ? 'text-red-600' : 'text-gray-600'
-                }`}>
-                  {!isVideoReady ? 'Carregando...' : 
-                   isSeeking ? 'Posicionando vídeo...' :
-                   isBuffering ? 'Carregando segmento...' :
-                   isPlaying ? `Reproduzindo (${currentTrackData.startTime}s - ${currentTrackData.endTime}s)` : 
-                   'Pronto para reproduzir'}
-                </span>
-              </div>
             </div>
 
             {/* Input Section */}
