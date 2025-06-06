@@ -13,7 +13,8 @@ import {
   Mic,
   Eye,
   EyeOff,
-  Video
+  Video,
+  Gauge
 } from 'lucide-react';
 import BlurFade from '../components/ui/blur-fade';
 import { MagicCard } from '../components/ui/magic-card';
@@ -47,12 +48,15 @@ const Lesson: React.FC = () => {
   const [isBuffering, setIsBuffering] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
   const [pauseTimeoutId, setPauseTimeoutId] = useState<NodeJS.Timeout | null>(null);
-  
+
   // NOVO: Ref para armazenar os dados do segmento atual em reprodução
   const currentPlayingSegmentRef = useRef<typeof lessonData.tracks[0] | null>(null);
   
   // NOVO: Estado para controlar se há um segmento sendo reproduzido
   const [isPlayingSegment, setIsPlayingSegment] = useState(false);
+  
+  // NOVO: Estado para controlar a velocidade do vídeo
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
   // Mock lesson data com segmentos de vídeo
   const lessonData = {
@@ -167,6 +171,9 @@ const Lesson: React.FC = () => {
 
   const onPlayerReady = () => {
     setIsVideoReady(true);
+    if (playerRef.current) {
+      playerRef.current.setPlaybackRate(playbackSpeed);
+    }
   };
 
   const onPlayerStateChange = (event: any) => {
@@ -301,6 +308,39 @@ const Lesson: React.FC = () => {
     setShowingFeedback(false);
     setShowAnswer(false);
     setUserInput('');
+  };
+
+  // Função para destacar diferenças entre resposta do usuário e resposta correta
+  const highlightDifferences = (correctText: string, userText: string) => {
+    const correctWords = correctText.toLowerCase().split(/\s+/);
+    const userWords = userText.toLowerCase().split(/\s+/);
+    const originalWords = correctText.split(/\s+/);
+    
+    return originalWords.map((word, index) => {
+      const isIncorrect = !userWords[index] || userWords[index] !== correctWords[index];
+      return (
+        <span
+          key={index}
+          className={isIncorrect ? 'underline decoration-2 decoration-green-600' : ''}
+        >
+          {word}{index < originalWords.length - 1 ? ' ' : ''}
+        </span>
+      );
+    });
+  };
+
+  // Função para alterar velocidade do vídeo
+  const togglePlaybackSpeed = () => {
+    const speeds = [0.5, 0.75, 1, 1.25, 1.5];
+    const currentIndex = speeds.indexOf(playbackSpeed);
+    const nextIndex = (currentIndex + 1) % speeds.length;
+    const newSpeed = speeds[nextIndex];
+    
+    setPlaybackSpeed(newSpeed);
+    
+    if (playerRef.current) {
+      playerRef.current.setPlaybackRate(newSpeed);
+    }
   };
 
   // Função melhorada para próximo segmento
@@ -443,7 +483,7 @@ const Lesson: React.FC = () => {
           return;
         }
 
-        const currentTime = playerRef.current.getCurrentTime();
+      const currentTime = playerRef.current.getCurrentTime();
         
         // Verifica se o currentTime está dentro do range esperado do segmento
         const timeFromStart = currentTime - trackData.startTime;
@@ -456,26 +496,26 @@ const Lesson: React.FC = () => {
           return;
         }
 
-        // Calcula a duração restante usando o endTime do trackData passado
-        const remainingDuration = (trackData.endTime - currentTime) * 1000;
+      // Calcula a duração restante usando o endTime do trackData passado
+      const remainingDuration = (trackData.endTime - currentTime) * 1000;
 
         console.log(`Setting pause timeout for segment ${trackData.id} - currentTime: ${currentTime.toFixed(1)}s, endTime: ${trackData.endTime}s, duration: ${remainingDuration.toFixed(0)}ms`);
 
         if (remainingDuration > 200) { // Aumentei de 100 para 200ms
-          const timeoutId = setTimeout(() => {
+        const timeoutId = setTimeout(() => {
             // Verifica novamente se ainda é o segmento correto
             if (currentPlayingSegmentRef.current?.id === trackData.id && 
                 playerRef.current && 
                 playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
-              console.log(`Pausing video at endTime: ${trackData.endTime}s for segment ${trackData.id}`);
-              playerRef.current.pauseVideo();
-              setIsPlaying(false);
+            console.log(`Pausing video at endTime: ${trackData.endTime}s for segment ${trackData.id}`);
+            playerRef.current.pauseVideo();
+            setIsPlaying(false);
               setIsPlayingSegment(false);
               currentPlayingSegmentRef.current = null;
             } else {
               console.log(`Timeout executed but segment changed or not playing (segment: ${trackData.id})`);
-            }
-            setPauseTimeoutId(null); // Limpa o ID após execução
+          }
+          setPauseTimeoutId(null); // Limpa o ID após execução
           }, remainingDuration - 150); // Buffer de 150ms para compensar latência
 
           setPauseTimeoutId(timeoutId);
@@ -492,17 +532,17 @@ const Lesson: React.FC = () => {
             }
             setPauseTimeoutId(null);
           }, Math.max(remainingDuration - 50, 0));
-          setPauseTimeoutId(timeoutId);
-        } else {
+        setPauseTimeoutId(timeoutId);
+      } else {
           console.warn(`Segment ${trackData.id} already ended (${remainingDuration.toFixed(0)}ms), pausing immediately.`);
           if (currentPlayingSegmentRef.current?.id === trackData.id && 
               playerRef.current.getPlayerState() === window.YT.PlayerState.PLAYING) {
-            playerRef.current.pauseVideo();
-            setIsPlaying(false);
+          playerRef.current.pauseVideo();
+          setIsPlaying(false);
             setIsPlayingSegment(false);
             currentPlayingSegmentRef.current = null;
-          }
         }
+      }
       };
 
       // Inicia a configuração do timeout
@@ -536,13 +576,13 @@ const Lesson: React.FC = () => {
       {/* Header Simples - Apenas botão voltar */}
       <BlurFade delay={0.1}>
         <div className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-6 py-4 border-b border-gray-200/50 dark:border-gray-700/50">
-          <button
-            onClick={() => navigate(-1)}
+            <button
+              onClick={() => navigate(-1)}
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">Voltar</span>
-          </button>
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="text-sm font-medium">Voltar</span>
+            </button>
         </div>
       </BlurFade>
 
@@ -550,18 +590,8 @@ const Lesson: React.FC = () => {
       <div className="px-6 py-4">
         <BlurFade delay={0.2}>
           <MagicCard className="p-6 mb-6">
-            <div className="mb-6">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 rounded-full text-red-700 text-sm font-medium mb-4">
-                <Video className="w-4 h-4" />
-                <span>Player de Vídeo</span>
-              </div>
-              <p className="text-gray-600 dark:text-gray-300">
-                Assista o segmento do vídeo e digite o que você entendeu
-              </p>
-            </div>
-
             {/* YouTube Video Visível */}
-            <div className="relative aspect-video mb-6 rounded-xl overflow-hidden shadow-lg bg-black">
+            <div className="relative aspect-video mb-4 rounded-xl overflow-hidden shadow-lg bg-black">
               <div ref={playerContainerRef} className="w-full h-full"></div>
               
               {/* Overlay de status quando necessário */}
@@ -574,24 +604,45 @@ const Lesson: React.FC = () => {
                 </div>
               )}
             </div>
-            
-            {/* Control Buttons */}
-            <div className="flex justify-center items-center gap-4 mb-8">
-              <button
-                onClick={replayVideoSegment}
-                disabled={!isVideoReady || isSeeking}
-                className="w-12 h-12 flex items-center justify-center bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95"
-              >
-                <RotateCcw className="w-5 h-5 text-gray-700" />
-              </button>
+
+            {/* Controles de vídeo - todos alinhados na mesma linha */}
+            <div className="flex justify-between items-center mb-6">
+              {/* Contador de segmentos */}
+              <div className="flex items-center h-14">
+                <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-full">
+                  {currentTrack + 1}/{lessonData.tracks.length}
+                </div>
+              </div>
               
-              <button
-                onClick={playVideoSegment}
-                disabled={!isVideoReady || isSeeking || isPlaying}
-                className="w-14 h-14 flex items-center justify-center bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-white"
-              >
-                <Play className="w-6 h-6 ml-1" />
-              </button>
+              {/* Botões de controle centralizados */}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={replayVideoSegment}
+                  disabled={!isVideoReady || isSeeking}
+                  className="w-12 h-12 flex items-center justify-center bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95"
+                >
+                  <RotateCcw className="w-5 h-5 text-gray-700" />
+                </button>
+                
+                <button
+                  onClick={playVideoSegment}
+                  disabled={!isVideoReady || isSeeking || isPlaying}
+                  className="w-14 h-14 flex items-center justify-center bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-white"
+                >
+                  <Play className="w-6 h-6 ml-1" />
+                </button>
+              </div>
+              
+              {/* Botão de velocidade */}
+              <div className="flex items-center h-14">
+                <button
+                  onClick={togglePlaybackSpeed}
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 px-3 py-2 rounded-full transition-all duration-200"
+                >
+                  <Gauge className="w-3 h-3" />
+                  <span>{playbackSpeed}x</span>
+                </button>
+              </div>
             </div>
 
             {/* Input Section */}
@@ -620,7 +671,8 @@ const Lesson: React.FC = () => {
                 />
               </div>
 
-              {!hasChecked ? (
+              {/* Botão Verificar Resposta - sempre visível (exceto quando acerta) */}
+              {!isCorrect && (
                 <div className="space-y-3">
                   {/* Botão principal - Verificar Resposta */}
                   <ShimmerButton
@@ -631,78 +683,79 @@ const Lesson: React.FC = () => {
                     shimmerColor="#ffffff"
                   >
                     <Check className="w-5 h-5" />
-                    <span className="font-medium">Verificar Resposta</span>
+                    <span className="font-medium">
+                      {hasChecked && !isCorrect ? 'Tentar Novamente' : 'Verificar Resposta'}
+                    </span>
                   </ShimmerButton>
                   
-                  {/* Botão secundário - Mostrar/Ocultar */}
-                  {!showAnswer ? (
-                    <button
-                      onClick={showCorrectAnswer}
-                      className="w-full py-3 px-4 bg-transparent border-2 border-gray-300 hover:border-amber-400 hover:bg-amber-50 text-gray-600 hover:text-amber-700 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>Mostrar resposta</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={hideAnswer}
-                      className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-700 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
-                    >
-                      <EyeOff className="w-4 h-4" />
-                      <span>Ocultar resposta</span>
-                    </button>
+                  {/* Botão secundário - Mostrar/Ocultar (apenas se não verificou ainda) */}
+                  {!hasChecked && (
+                    <>
+                      {!showAnswer ? (
+                        <button
+                          onClick={showCorrectAnswer}
+                          className="w-full py-3 px-4 bg-transparent border-2 border-gray-300 hover:border-amber-400 hover:bg-amber-50 text-gray-600 hover:text-amber-700 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>Mostrar resposta</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={hideAnswer}
+                          className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-700 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+                        >
+                          <EyeOff className="w-4 h-4" />
+                          <span>Ocultar resposta</span>
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Feedback */}
-                  <div className={`p-6 rounded-xl text-center ${
-                    isCorrect 
-                      ? 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200' 
-                      : 'bg-gradient-to-r from-red-50 to-rose-50 border border-red-200'
-                  }`}>
-                    <div className="flex items-center justify-center mb-3">
-                      {isCorrect ? (
+              )}
+
+              {/* Feedback após verificação - permanece visível durante edição se errou */}
+              {hasChecked && (
+                <div className="space-y-3">
+                  {/* Feedback para respostas corretas */}
+                  {isCorrect ? (
+                    <div className="p-6 rounded-xl text-center bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
+                      <div className="flex items-center justify-center mb-3">
                         <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
                           <Check className="w-6 h-6 text-white" />
                         </div>
-                      ) : (
-                        <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
-                          <X className="w-6 h-6 text-white" />
-                        </div>
-                      )}
-                    </div>
-                    <h3 className={`text-xl font-bold mb-2 ${
-                      isCorrect ? 'text-green-800' : 'text-red-800'
-                    }`}>
-                      {isCorrect ? 'Excelente!' : 'Quase lá!'}
-                    </h3>
-                    <p className={`text-sm ${
-                      isCorrect ? 'text-green-700' : 'text-red-700'
-                    }`}>
-                      {isCorrect 
-                        ? 'Você entendeu perfeitamente o vídeo!' 
-                        : 'Não foi dessa vez. Continue praticando!'
-                      }
-                    </p>
-                  </div>
-
-                  {/* Text Comparison */}
-                  <MagicCard className="p-6 bg-gray-50/50">
-                    <h4 className="font-semibold text-gray-800 mb-4 text-center">Comparação de Respostas</h4>
-                    <div className="space-y-4">
-                      <div className="p-4 bg-white rounded-lg border">
-                        <div className="text-sm font-medium text-gray-600 mb-1">Sua resposta:</div>
-                        <div className={`font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                          {userInput || '(vazio)'}
-                        </div>
                       </div>
-                      <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                        <div className="text-sm font-medium text-gray-600 mb-1">Resposta correta:</div>
-                        <div className="font-medium text-green-700 mb-2">{currentTrackData.correctText}</div>
-                        <div className="text-sm text-green-600">
-                          <span className="font-medium">Tradução:</span> {currentTrackData.translation}
-                        </div>
+                      <h3 className="text-xl font-bold mb-2 text-green-800">
+                        Excelente!
+                      </h3>
+                      <p className="text-sm text-green-700">
+                        Você entendeu perfeitamente o vídeo!
+                      </p>
+                    </div>
+                  ) : (
+                    /* Feedback para respostas incorretas - mostrar o que o usuário escreveu errado */
+                    <div className="p-4 rounded-xl text-center bg-gradient-to-r from-red-50 to-rose-50 border border-red-200">
+                      <div className="flex items-center justify-center mb-2 gap-2">
+                        <X className="w-4 h-4 text-red-500" />
+                        <p className="text-xs text-red-500 font-medium">Quase lá!</p>
+                      </div>
+                      <div className="text-sm font-medium text-red-700 bg-red-100 p-2 rounded-lg border border-red-200">
+                        "{userInput || '(vazio)'}"
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Text Comparison - Sempre mostrar a resposta correta */}
+                  <MagicCard className="p-4 bg-gray-50/50">
+                    <h4 className="font-medium text-gray-800 mb-3 text-center text-sm">Resposta Correta</h4>
+                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="font-medium text-green-700 mb-2 text-center text-base">
+                        {hasChecked && !isCorrect ? 
+                          highlightDifferences(currentTrackData.correctText, userInput) : 
+                          currentTrackData.correctText
+                        }
+                      </div>
+                      <div className="text-xs text-green-600 text-center">
+                        <span className="font-medium">Tradução:</span> {currentTrackData.translation}
                       </div>
                     </div>
                   </MagicCard>
