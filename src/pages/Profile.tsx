@@ -71,14 +71,14 @@ const Profile: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             {userStats.map((stat, index) => (
               <BlurFade key={index} delay={0.3 + index * 0.1}>
-                <MagicCard className="p-4 text-center">
-                  <div className={`${stat.color} mb-2 flex justify-center`}>
+                <MagicCard className="p-6 text-center h-full flex flex-col justify-center">
+                  <div className={`${stat.color} mb-3 flex justify-center`}>
                     {stat.icon}
                   </div>
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                     {stat.value}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div className="text-sm text-gray-600 dark:text-gray-300 leading-tight">
                     {stat.label}
                   </div>
                 </MagicCard>
