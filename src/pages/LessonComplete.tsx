@@ -90,8 +90,8 @@ const LessonComplete = () => {
       </BlurFade>
 
       <div className="px-6 py-6 space-y-6">
-        
-        {/* Results Summary */}
+
+      {/* Results Summary */}
         <BlurFade delay={0.2}>
           <MagicCard className="p-6">
             <div className="text-center mb-6">
@@ -101,7 +101,7 @@ const LessonComplete = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                    Resumo dos Resultados
+            Resumo dos Resultados
                   </h3>
                 </div>
               </div>
@@ -134,7 +134,7 @@ const LessonComplete = () => {
                       strokeDasharray={`${accuracy * 2.51327} 251.327`}
                       className={accuracy >= 70 ? 'text-blue-500' : 'text-orange-500'}
                       strokeLinecap="round"
-                    />
+                  />
                   </svg>
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -170,7 +170,7 @@ const LessonComplete = () => {
           </MagicCard>
         </BlurFade>
 
-        {/* Detailed Breakdown */}
+      {/* Detailed Breakdown */}
         <BlurFade delay={0.3}>
           <MagicCard className="p-6">
             <div className="text-center mb-6">
@@ -190,33 +190,33 @@ const LessonComplete = () => {
             </div>
 
             <div className="space-y-3 max-w-md mx-auto">
-              {Array.from({ length: completionData.totalTracks }, (_, i) => (
+            {Array.from({ length: completionData.totalTracks }, (_, i) => (
                 <div key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200/50 dark:border-gray-700/50">
                   <span className="font-medium text-gray-700 dark:text-gray-300">Segmento {i + 1}</span>
                   <div className="flex items-center gap-2">
-                    {i < completionData.correctAnswers ? (
+                  {i < completionData.correctAnswers ? (
                       <>
                         <CheckCircle className="w-5 h-5 text-green-500" />
                         <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm font-medium rounded-full">
                           Correto
                         </span>
                       </>
-                    ) : (
+                  ) : (
                       <>
                         <XCircle className="w-5 h-5 text-red-500" />
                         <span className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-sm font-medium rounded-full">
                           Incorreto
                         </span>
                       </>
-                    )}
-                  </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
           </MagicCard>
         </BlurFade>
 
-        {/* Action Buttons */}
+      {/* Action Buttons */}
         <BlurFade delay={0.4}>
           <div className="space-y-4 max-w-md mx-auto">
             <ShimmerButton
@@ -231,17 +231,17 @@ const LessonComplete = () => {
             
             <div className="grid grid-cols-2 gap-4">
               <button
-                onClick={() => navigate(`/lesson/${id}`)}
+          onClick={() => navigate(`/lesson/${id}`)}
                 className="flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-300 rounded-xl transition-all duration-200 font-medium"
-              >
+        >
                 <RotateCcw className="w-4 h-4" />
                 <span>Repetir</span>
               </button>
 
               <button
-                onClick={() => navigate('/my-lessons')}
+          onClick={() => navigate('/my-lessons')}
                 className="flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 text-gray-700 dark:text-gray-300 hover:text-purple-700 dark:hover:text-purple-300 rounded-xl transition-all duration-200 font-medium"
-              >
+        >
                 <ArrowRight className="w-4 h-4" />
                 <span>Minhas Lições</span>
               </button>
