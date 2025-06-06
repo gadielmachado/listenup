@@ -32,61 +32,6 @@ const allLessons = [
     icon: <BookOpen className="w-6 h-6" />,
     color: "from-blue-500 to-blue-600",
     videoId: "SWBMp1kAScU"
-  },
-  {
-    id: 2,
-    title: "Pronúncia Clara",
-    description: "Melhore sua pronúncia com exercícios práticos",
-    duration: "20 min",
-    difficulty: "Intermediário",
-    completed: false,
-    progress: 60,
-    icon: <Headphones className="w-6 h-6" />,
-    color: "from-indigo-500 to-purple-600"
-  },
-  {
-    id: 3,
-    title: "Vocabulário de Negócios",
-    description: "Termos e expressões para o ambiente profissional",
-    duration: "25 min",
-    difficulty: "Avançado",
-    completed: true,
-    progress: 100,
-    icon: <Trophy className="w-6 h-6" />,
-    color: "from-green-500 to-emerald-600"
-  },
-  {
-    id: 4,
-    title: "Compreensão Auditiva",
-    description: "Pratique a escuta com áudios nativos",
-    duration: "18 min",
-    difficulty: "Intermediário",
-    completed: false,
-    progress: 30,
-    icon: <Play className="w-6 h-6" />,
-    color: "from-orange-500 to-red-500"
-  },
-  {
-    id: 5,
-    title: "Gramática Essencial",
-    description: "Fundamentos da gramática inglesa",
-    duration: "30 min",
-    difficulty: "Iniciante",
-    completed: false,
-    progress: 45,
-    icon: <BookOpen className="w-6 h-6" />,
-    color: "from-cyan-500 to-blue-600"
-  },
-  {
-    id: 6,
-    title: "Expressões Idiomáticas",
-    description: "Aprenda phrasal verbs e expressões comuns",
-    duration: "22 min",
-    difficulty: "Avançado",
-    completed: false,
-    progress: 80,
-    icon: <Star className="w-6 h-6" />,
-    color: "from-purple-500 to-pink-600"
   }
 ];
 
@@ -203,13 +148,13 @@ const Home: React.FC = () => {
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-white/20 rounded-ios-lg backdrop-blur-md">
-                  <Zap className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold">ListenUp!</h1>
-                  <p className="text-blue-100">Domine o inglês com IA</p>
-                </div>
+              <div className="p-3 bg-white/20 rounded-ios-lg backdrop-blur-md">
+                <Zap className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">ListenUp!</h1>
+                <p className="text-blue-100">Domine o inglês com IA</p>
+              </div>
               </div>
               
               {/* Search Icon */}
